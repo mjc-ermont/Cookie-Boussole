@@ -1,15 +1,15 @@
-package fr.projetcookie.boussole;
+package fr.projetcookie.boussole.providers;
 
 import android.location.Location;
 
 public abstract class BaloonPositionProvider extends Thread {
 	int refresh_time;
 	
-	BaloonPositionProvider(int t) {
+	public BaloonPositionProvider(int t) {
 		refresh_time = t;
 	}
 	
-	abstract float stahp();
+	public abstract float stahp();
 
 	abstract public Location getLocation(); 
 }

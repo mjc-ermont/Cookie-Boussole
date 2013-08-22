@@ -1,10 +1,10 @@
-package fr.projetcookie.boussole;
+package fr.projetcookie.boussole.providers;
 
 import android.location.Location;
 
 public class BaloonPositionTest extends BaloonPositionProvider {
 	
-	BaloonPositionTest(int t) {
+	public BaloonPositionTest(int t) {
 		super(t);
 	}
 	
@@ -13,15 +13,17 @@ public class BaloonPositionTest extends BaloonPositionProvider {
 	}
 
 	@Override
-	float stahp() {
+	public float stahp() {
 		return 0;
 	}
 
 	@Override
 	public Location getLocation() {
 		Location loc = new Location("bpos");
-		loc.setLatitude(0);
-		loc.setLongitude(0);
+		loc.setLatitude(45.200);
+		loc.setLongitude(0.733);
+		loc.setBearing(0);
+		loc.setAltitude(42000);
 		return loc;
 	}
 

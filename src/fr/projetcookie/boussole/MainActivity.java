@@ -1,317 +1,543 @@
 package fr.projetcookie.boussole;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
 
-import android.app.ActionBar;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesClient;
+import com.google.android.gms.location.LocationClient;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.maps.GoogleMapOptions;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
-import android.location.Criteria;
+import android.content.res.Configuration;
 import android.location.Location;
-import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.provider.Settings;
-
+import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.NavUtils;
-import android.text.Editable;
-import android.text.TextWatcher;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.ViewGroup;
+import android.widget.Adapter;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
+import android.widget.BaseAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.support.v7.app.ActionBarActivity;
 
-public class MainActivity extends FragmentActivity implements
-		ActionBar.OnNavigationListener, SensorEventListener, LocationListener {
+public class MainActivity extends ActionBarActivity implements
+GooglePlayServicesClient.ConnectionCallbacks,
+GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
+    public DrawerLayout mDrawerLayout;
+    ListView mDrawerList;
+    private ActionBarDrawerToggle mDrawerToggle;
 
+    private CharSequence mDrawerTitle;
+    private CharSequence mTitle;
+    private String[] mEntriesTitles;
+	private String[] mDataTitles;
+	private SeparatedListAdapter adapter;
 	
-	private SensorManager sensorManager;
-	private Sensor sensorAccelerometer;
-	private Sensor sensorMagneticField;
-	   
-	private float[] valuesAccelerometer;
-	private float[] valuesMagneticField;
-	   
-	private float[] matrixR;
-	private float[] matrixI;
-	private float[] matrixValues;
-	 
-	private static final String STATE_SELECTED_NAVIGATION_ITEM = "selected_navigation_item";
-	private CompassView compass=null;
-	private Fragment curFragment=null;
-	private LocationManager locationManager;
-	private String provider;
-	private BaloonPositionProvider bpos;
-	private Location lastLocation;
+	private LocationRequest mLocationRequest;
+	private SharedPreferences mPrefs;
+	private Editor mEditor;
+	private LocationClient mLocationClient;
+	private boolean mUpdatesRequested=false;
 	
+    private final static int
+    CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
+    private static final int MILLISECONDS_PER_SECOND = 1000;
+    // Update frequency in seconds
+    public static final int UPDATE_INTERVAL_IN_SECONDS = 5;
+    // Update frequency in milliseconds
+    private static final long UPDATE_INTERVAL =
+            MILLISECONDS_PER_SECOND * UPDATE_INTERVAL_IN_SECONDS;
+    // The fastest update frequency, in seconds
+    private static final int FASTEST_INTERVAL_IN_SECONDS = 1;
+    // A fast frequency ceiling in milliseconds
+    private static final long FASTEST_INTERVAL =
+            MILLISECONDS_PER_SECOND * FASTEST_INTERVAL_IN_SECONDS;
+    
+    private Fragment currentFragment;
+
+    private DataManager mDataManager;
+	private String mAltitudeText;
+	private String mDistanceText;
+	private String mLatitudeText;
+	private String mLongitudeText;
+	
+	private ArrayAdapter<String> dataAdapter;
+	private ArrayList<String> mDataString = new ArrayList<String>();
+	private Marker mBaloonMarker;
+
+    
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
-		// Set up the action bar to show a dropdown list.
-		final ActionBar actionBar = getActionBar();
-		actionBar.setDisplayShowTitleEnabled(false);
-		actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_LIST);
-	    
-	    sensorManager = (SensorManager)getSystemService(SENSOR_SERVICE);
-	    sensorAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
-	    sensorMagneticField = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
-	    
-		// Set up the dropdown list navigation in the action bar.
-		actionBar.setListNavigationCallbacks(new ArrayAdapter<String>(actionBar.getThemedContext(),
-						android.R.layout.simple_list_item_1,
-						android.R.id.text1, new String[] {
-								"Boussole",
-								"Paramètres", }), this);
-		
-	   valuesAccelerometer = new float[3];
-	   valuesMagneticField = new float[3];
-	  
-	   matrixR = new float[9];
-	   matrixI = new float[9];
-	   matrixValues = new float[3];
-	   
-	    locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-	    // Define the criteria how to select the locatioin provider -> use
-	    // default
-	    boolean enabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        mTitle = mDrawerTitle = getTitle();
+        mEntriesTitles = getResources().getStringArray(R.array.entries_array);
+        mDataTitles = getResources().getStringArray(R.array.data_array);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.left_drawer);
 
-		// Check if enabled and if not send user to the GSP settings
-		// Better solution would be to display a dialog and suggesting to 
-		// go to the settings
-		if (!enabled) {
-		  Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-		  startActivity(intent);
-		  finish();
-		} else {
+        // set a custom shadow that overlays the main content when the drawer opens
+        mDrawerLayout.setDrawerShadow(R.drawable.drawer_shadow, GravityCompat.START);
+        // set up the drawer's list view with items and click listener
+        adapter = new SeparatedListAdapter(this);
+        adapter.addSection("Navigation", new ArrayAdapter<String>(this,
+                R.layout.drawer_list_item, mEntriesTitles));
+        
+        
+        mDataString.clear();
+		mAltitudeText  = mDataTitles[0] + " N/A";
+		mDistanceText  = mDataTitles[1] + " N/A";
+		mLatitudeText  = mDataTitles[2] + " N/A";
+		mLongitudeText = mDataTitles[3] + " N/A";
 
-			
-		    Location location = locationManager.getLastKnownLocation("gps");
-		    
-		    // Initialize the location fields
-		    if (location != null) {
-		      System.out.println("Provider " + provider + " has been selected.");
-		      onLocationChanged(location);
-		    } else {
-		    	Toast.makeText(this, "Location not available!", Toast.LENGTH_LONG).show();
-			  
-		    }
-		}
-	    
-		
-	    
+		mDataString.add(mAltitudeText);
+		mDataString.add(mDistanceText);
+		mDataString.add(mLatitudeText);
+		mDataString.add(mLongitudeText);
+        
+        dataAdapter = new ArrayAdapter<String>(this,
+                R.layout.drawer_list_item, mDataString);
+        adapter.addSection("Données", dataAdapter);
+        
+        mDrawerList.setAdapter(adapter);
+        mDrawerList.setOnItemClickListener(new DrawerItemClickListener());
+
+        // enable ActionBar app icon to behave as action to toggle nav drawer
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
+
+        // ActionBarDrawerToggle ties together the the proper interactions
+        // between the sliding drawer and the action bar app icon
+        mDrawerToggle = new ActionBarDrawerToggle(
+                this,                  /* host Activity */
+                mDrawerLayout,         /* DrawerLayout object */
+                R.drawable.ic_drawer,  /* nav drawer image to replace 'Up' caret */
+                R.string.drawer_open,  /* "open drawer" description for accessibility */
+                R.string.drawer_close  /* "close drawer" description for accessibility */
+                ) {
+            public void onDrawerClosed(View view) {
+                getSupportActionBar().setTitle(mTitle);
+            }
+
+            public void onDrawerOpened(View drawerView) {
+            	getSupportActionBar().setTitle(mDrawerTitle);
+            }
+        };
+        mDrawerLayout.setDrawerListener(mDrawerToggle);
+
+        if (savedInstanceState == null) {
+            selectItem(1);
+        }
+        
+        mLocationRequest = LocationRequest.create();
+        // Use high accuracy
+        mLocationRequest.setPriority(
+                LocationRequest.PRIORITY_HIGH_ACCURACY);
+        // Set the update interval to 5 seconds
+        mLocationRequest.setInterval(UPDATE_INTERVAL);
+        // Set the fastest update interval to 1 second
+        mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
+        
+        // Open the shared preferences
+        mPrefs = getSharedPreferences("SharedPreferences",
+                Context.MODE_PRIVATE);
+        // Get a SharedPreferences editor
+        mEditor = mPrefs.edit();
+        /*
+         * Create a new location client, using the enclosing class to
+         * handle callbacks.
+         */
+        
+        
+        mLocationClient = new LocationClient(this, this, this);
+        // Start with updates turned off
+        mUpdatesRequested = false;
+        
+        mDataManager = new DataManager(this, this);
+        
+
+        final LocationManager manager = (LocationManager) getSystemService( Context.LOCATION_SERVICE );
+
+        if ( !manager.isProviderEnabled( LocationManager.GPS_PROVIDER ) ) {
+            buildAlertMessageNoGps();
+        }
 
 	}
+	
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main, menu);
+
+       return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+         // The action bar home/up action should open or close the drawer.
+         // ActionBarDrawerToggle will take care of this.
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+        // Handle action buttons
+        switch(item.getItemId()) {
+        case R.id.action_settings:
+        	selectItem(3);
+        	return true;
+        case R.id.action_enable_gps:
+        	 startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+             return true;
+        default:
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    /* The click listner for ListView in the navigation drawer */
+    private class DrawerItemClickListener implements ListView.OnItemClickListener {
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            selectItem(position);
+        }
+    }
+
+    private void selectItem(int position) {
+    	if(position >= 1 && position <= 3) {
+    		setTitle(mEntriesTitles[position-1]);
+        	mDrawerList.setItemChecked(position, true);
+            mDrawerLayout.closeDrawer(mDrawerList);
+    	}
+    	
+    	switch(position) {
+    	case 1: // Boussole
+    		mBaloonMarker=null;
+    		currentFragment = new Fragments.BoussoleFragment();
+			getSupportFragmentManager().beginTransaction().replace(R.id.container, currentFragment).commit();
+    		break;
+    	case 2: // Maps
+    		currentFragment = new Fragments.MapsFragment() ;
+			getSupportFragmentManager().beginTransaction().replace(R.id.container, currentFragment).commit();
+			
+			break;
+    	case 3: // Settings
+    		mBaloonMarker=null;
+    		currentFragment = new Fragments.SettingsFragment(this);
+			getSupportFragmentManager().beginTransaction().replace(R.id.container, currentFragment).commit();
+    		break;
+    	}
+        //
+    }
+    
+    private void buildAlertMessageNoGps() {
+	    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+	    builder.setMessage("Votre GPS n'est pas activé. Améliorer la précision en l'activant?")
+	           .setCancelable(false)
+	           .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
+	               public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+	                   startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+	               } //TODO yolo
+	           })
+	           .setNegativeButton("GET THE FUCK AWAY", new DialogInterface.OnClickListener() {
+	               public void onClick(final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
+	                    dialog.cancel();
+	               }
+	           });
+	    final AlertDialog alert = builder.create();
+	    alert.show();
+	}
+
+    @Override
+    public void setTitle(CharSequence title) {
+        mTitle = title;
+
+        getSupportActionBar().setTitle(mTitle);
+    }
+
+    /**
+     * When using the ActionBarDrawerToggle, you must call it during
+     * onPostCreate() and onConfigurationChanged()...
+     */
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // Sync the toggle state after onRestoreInstanceState has occurred.
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // Pass any configuration change to the drawer toggls
+        mDrawerToggle.onConfigurationChanged(newConfig);
+    }
+
+    public class SeparatedListAdapter extends BaseAdapter {
+    	
+    	public final Map<String,Adapter> sections = new LinkedHashMap<String,Adapter>();
+    	public final ArrayAdapter<String> headers;
+    	public final static int TYPE_SECTION_HEADER = 0;
+    	
+    	public SeparatedListAdapter(Context context) {
+    		headers = new ArrayAdapter<String>(context, R.layout.list_header);
+    	}
+    	
+    	public void addSection(String section, Adapter adapter) {
+    		this.headers.add(section);
+    		this.sections.put(section, adapter);
+    	}
+    	
+    	public Object getItem(int position) {
+    		for(Object section : this.sections.keySet()) {
+    			Adapter adapter = sections.get(section);
+    			int size = adapter.getCount() + 1;
+    			
+    			// check if position inside this section 
+    			if(position == 0) return section;
+    			if(position < size) return adapter.getItem(position - 1);
+
+    			// otherwise jump into next section
+    			position -= size;
+    		}
+    		return null;
+    	}
+
+    	public int getCount() {
+    		// total together all sections, plus one for each section header
+    		int total = 0;
+    		for(Adapter adapter : this.sections.values())
+    			total += adapter.getCount() + 1;
+    		return total;
+    	}
+
+    	public int getViewTypeCount() {
+    		// assume that headers count as one, then total all sections
+    		int total = 1;
+    		for(Adapter adapter : this.sections.values())
+    			total += adapter.getViewTypeCount();
+    		return total;
+    	}
+    	
+    	public int getItemViewType(int position) {
+    		int type = 1;
+    		for(Object section : this.sections.keySet()) {
+    			Adapter adapter = sections.get(section);
+    			int size = adapter.getCount() + 1;
+    			
+    			// check if position inside this section 
+    			if(position == 0) return TYPE_SECTION_HEADER;
+    			if(position < size) return type + adapter.getItemViewType(position - 1);
+
+    			// otherwise jump into next section
+    			position -= size;
+    			type += adapter.getViewTypeCount();
+    		}
+    		return -1;
+    	}
+    	
+    	public boolean areAllItemsSelectable() {
+    		return false;
+    	}
+
+    	public boolean isEnabled(int position) {
+    		return (getItemViewType(position) != TYPE_SECTION_HEADER);
+    	}
+    	
+    	@Override
+    	public View getView(int position, View convertView, ViewGroup parent) {
+    		int sectionnum = 0;
+    		for(Object section : this.sections.keySet()) {
+    			Adapter adapter = sections.get(section);
+    			int size = adapter.getCount() + 1;
+    			
+    			// check if position inside this section 
+    			if(position == 0) return headers.getView(sectionnum, convertView, parent);
+    			if(position < size) return adapter.getView(position - 1, convertView, parent);
+
+    			// otherwise jump into next section
+    			position -= size;
+    			sectionnum++;
+    		}
+    		return null;
+    	}
+
+    	@Override
+    	public long getItemId(int position) {
+    		return position;
+    	}
+
+
+    }
+
+    @Override
+    protected void onPause() {
+    	super.onPause();
+        // Save the current setting for updates
+        mEditor.putBoolean("KEY_UPDATES_ON", mUpdatesRequested);
+        mEditor.commit();
+        
+        this.mDataManager.stop();
+    }
+    
+    @Override
+    protected void onStart() {
+    	super.onStart();
+        mLocationClient.connect();
+    }
+    
+    @Override
+    protected void onResume() {
+    	super.onResume();
+        /*
+         * Get any previous setting for location updates
+         * Gets "false" if an error occurs
+         */
+        if (mPrefs.contains("KEY_UPDATES_ON")) {
+            mUpdatesRequested =
+                    mPrefs.getBoolean("KEY_UPDATES_ON", false);
+
+        // Otherwise, turn off location updates
+        } else {
+            mEditor.putBoolean("KEY_UPDATES_ON", false);
+            mEditor.commit();
+        }
+        
+        this.mDataManager.start();
+    }
+	
+   @Override
+    protected void onStop() {
+        // If the client is connected
+        if (mLocationClient.isConnected()) {
+            /*
+             * Remove location updates for a listener.
+             * The current Activity is the listener, so
+             * the argument is "this".
+             */
+        	mLocationClient.removeLocationUpdates(mDataManager);
+        	
+        }
+        /*
+         * After disconnect() is called, the client is
+         * considered "dead".
+         */
+        mLocationClient.disconnect();
+        super.onStop();
+    }
+
+  @Override
+    public void onConnected(Bundle dataBundle) {
+       // Toast.makeText(this, "Connected", Toast.LENGTH_SHORT).show();
+       // if (mUpdatesRequested) {
+        	mLocationClient.requestLocationUpdates(mLocationRequest, mDataManager);
+      //  }
+    }
+    @Override
+    public void onDisconnected() {
+        Toast.makeText(this, "Disconnected. Please re-connect.",
+                Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult connectionResult) {
+        if (connectionResult.hasResolution()) {
+            try {
+                connectionResult.startResolutionForResult(
+                        this,
+                        CONNECTION_FAILURE_RESOLUTION_REQUEST);
+
+            } catch (IntentSender.SendIntentException e) {
+                e.printStackTrace();
+            }
+        } 
+    }
 
 	@Override
-	public void onRestoreInstanceState(Bundle savedInstanceState) {
-		// Restore the previously serialized current dropdown position.
-		if (savedInstanceState.containsKey(STATE_SELECTED_NAVIGATION_ITEM)) {
-			getActionBar().setSelectedNavigationItem(
-					savedInstanceState.getInt(STATE_SELECTED_NAVIGATION_ITEM));
-		}
-	}
-
-	@Override
-	public void onSaveInstanceState(Bundle outState) {
-		// Serialize the current dropdown position.
-		outState.putInt(STATE_SELECTED_NAVIGATION_ITEM, getActionBar()
-				.getSelectedNavigationIndex());
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		return false;
-	}
-
-	@Override
-	public boolean onNavigationItemSelected(int position, long id) {
-		// When the given dropdown item is selected, show its contents in the
-		// container view.
-		if(position == 0) {
-			BoussoleFragment fragment = new BoussoleFragment();
- 
-			getSupportFragmentManager().beginTransaction()
-					.replace(R.id.container, fragment).commit();
-			
-			curFragment = fragment;
-		} else {
-		
-			Fragment fragment = new SettingsFragment();
-			getSupportFragmentManager().beginTransaction()
-					.replace(R.id.container, fragment).commit();
-		}
-		return true;
-	}
-
-	 @Override
-	 protected void onResume() {
-	  
-	  sensorManager.registerListener(this,
-	    sensorAccelerometer,
-	    SensorManager.SENSOR_DELAY_NORMAL);
-	  sensorManager.registerListener(this,
-	    sensorMagneticField,
-	    SensorManager.SENSOR_DELAY_NORMAL);
-
-      locationManager.requestLocationUpdates(
-              LocationManager.GPS_PROVIDER,
-              500,
-              10, this);
-      bpos = new BaloonPositionTest(500);
-      bpos.start();
-      
-	  super.onResume();
-	  
-
-	 }
-	  
-	 @Override
-	 protected void onPause() {
-	  
-	  sensorManager.unregisterListener(this,
-	    sensorAccelerometer);
-	  sensorManager.unregisterListener(this,
-	    sensorMagneticField);
-	  
-	  locationManager.removeUpdates(this);
-	  bpos.stahp();
-	  super.onPause();
-	 }
-	  
-
-	public static class BoussoleFragment extends Fragment {
-		public BoussoleFragment() {
-		}
-
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container,
-				Bundle savedInstanceState) {
-			View rootView = inflater.inflate(R.layout.fragment_boussole,
-					container, false);
-			return rootView;
-		}
-	}
-	public static class SettingsFragment extends Fragment {
-		public SettingsFragment() {}
-
-		@Override
-		public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-			View rootView = inflater.inflate(R.layout.fragment_settings, container, false);
-			
-			final SharedPreferences settings = this.getActivity().getSharedPreferences("boussoleSwag", 0);
-			final EditText serverUrlEditText = (EditText) rootView.findViewById(R.id.serverUrl);
-			final Button validateButton = (Button) rootView.findViewById(R.id.validateButton);
-			
-			serverUrlEditText.setText(settings.getString("serverUrl", ""));
-			validateButton.setVisibility(Button.INVISIBLE);
-			validateButton.setOnClickListener(new OnClickListener() {
-			
-				@Override
-				public void onClick(View v) {
-					Editor editor = settings.edit();
-					editor.putString("serverUrl", serverUrlEditText.getText().toString());
-					editor.commit();
-					Toast.makeText(v.getContext(), "C'est bon merci", Toast.LENGTH_SHORT).show();
-					validateButton.setVisibility(Button.INVISIBLE);
+	public void onDirectionUpdate(float dir) {
+		if(currentFragment instanceof Fragments.BoussoleFragment) {
+			if(currentFragment != null) {
+				if(currentFragment.getView() != null) {
+					((CompassView)currentFragment.getView().findViewById(R.id.compassview)).updateDirection(dir);
 				}
-			});
+			}
+		}
+		
+		Location baloonLoc = mDataManager.mProvider.getLocation();
+		double h = baloonLoc.getAltitude(); // 6
+		double distance = baloonLoc.distanceTo(mDataManager.mLastLocation); // 7
+		double lat = baloonLoc.getLatitude(); // 8
+		double lon = baloonLoc.getLongitude(); // 9
+		
+		if(h > 800)
+			mAltitudeText  = mDataTitles[0] + " " + Math.round(h/10)/100f + " km";
+		else
+			mAltitudeText  = mDataTitles[0] + " " + Math.round(h) + " m";
+
+		if(distance > 800)
+			mDistanceText  = mDataTitles[1] + " " + Math.round(distance/10)/100f + " km";
+		else
+			mDistanceText  = mDataTitles[1] + " " + Math.round(distance) + " m";
 			
-			serverUrlEditText.addTextChangedListener(new TextWatcher() {
+		mLatitudeText  = mDataTitles[2] + " " + Math.round(lat*1000)/1000f + "°";
+		mLongitudeText = mDataTitles[3] + " " + Math.round(lon*1000)/1000f + "°";
 
-				@Override
-				public void afterTextChanged(Editable s) {}
-
-				@Override
-				public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-				@Override
-				public void onTextChanged(CharSequence s, int start, int before, int count) {
-					validateButton.setVisibility(Button.VISIBLE);
+		dataAdapter.clear();
+		dataAdapter.add(mAltitudeText);
+		dataAdapter.add(mDistanceText);
+		dataAdapter.add(mLatitudeText);
+		dataAdapter.add(mLongitudeText);
+		
+		dataAdapter.notifyDataSetChanged();
+		adapter.notifyDataSetChanged();
+		
+		if(currentFragment instanceof Fragments.MapsFragment) {
+			((Fragments.MapsFragment) currentFragment).onBaloonLocationChange(baloonLoc);
+		}
+		
+		if(mBaloonMarker == null){
+			if(currentFragment instanceof Fragments.MapsFragment) {
+				if(((Fragments.MapsFragment)currentFragment).getMap() != null) {
+					((Fragments.MapsFragment)currentFragment).getMap().setInfoWindowAdapter(new PopupAdapter(this.getLayoutInflater()));
+					mBaloonMarker = ((Fragments.MapsFragment) currentFragment).getMap().addMarker(new MarkerOptions()
+						.position(new LatLng(lat, lon))
+						.title("Ballon")
+						.snippet(mAltitudeText + "\n" + mDistanceText));
 				}
-			});
-			
-			return rootView;
+			}
+		} else {
+			mBaloonMarker.setPosition(new LatLng(lat, lon));
+			mBaloonMarker.setSnippet(mAltitudeText + "\n" + mDistanceText);
 		}
 	}
-	@Override
-	public void onAccuracyChanged(Sensor sensor, int accuracy) {}
 
-	@Override
-	public void onSensorChanged(SensorEvent event) {
-		  switch(event.sensor.getType()){
-		  case Sensor.TYPE_ACCELEROMETER:
-		   for(int i =0; i < 3; i++){
-			   valuesAccelerometer[i] = event.values[i];
-		   }
-		   break;
-		  case Sensor.TYPE_MAGNETIC_FIELD:
-		   for(int i =0; i < 3; i++){
-			   valuesMagneticField[i] = event.values[i];
-		   }
-		   break;
-		  }
-		    
-		  boolean success = SensorManager.getRotationMatrix(
-		       matrixR,
-		       matrixI,
-		       valuesAccelerometer,
-		       valuesMagneticField);
-		    
-		  if(success){
-			SensorManager.getOrientation(matrixR, matrixValues);
-		     
-		   	double azimuth = Math.toDegrees(matrixValues[0]);
-		     
-		   	if((compass == null) && (curFragment != null))
-			   if(curFragment.getView() != null)
-				   	compass = (CompassView) curFragment.getView().findViewById(R.id.compassview);
-			
-		   if((compass != null) && (lastLocation != null))
-			   compass.updateDirection(lastLocation.bearingTo(bpos.getLocation()) + (float) azimuth);
-		  }
+	public void invalidateSettings() {
+		mDataManager.invalidateSettings();
 	}
-
-	@Override
-	public void onLocationChanged(Location location) {
-	    Log.w("Boussole","Longitude="+location.getLongitude());
-	    Log.w("Boussole","Latitude="+location.getLatitude());
-	    Log.w("Boussole","Accuracy="+location.getAccuracy());
-	    Log.w("Boussole","Bearing="+location.getBearing());
-	    lastLocation = location;
-	}
-
-	@Override
-	public void onProviderDisabled(String provider) {
-	    Toast.makeText(this, "Disabled provider " + provider,
-	            Toast.LENGTH_SHORT).show();
-	}
-
-	@Override
-	public void onProviderEnabled(String provider) {
-	    Toast.makeText(this, "Enabled new provider " + provider,
-	            Toast.LENGTH_SHORT).show();
-	}
-
-	@Override
-	public void onStatusChanged(String provider, int status, Bundle extras) {}
 
 }

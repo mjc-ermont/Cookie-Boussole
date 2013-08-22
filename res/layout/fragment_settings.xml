@@ -9,27 +9,102 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context=".MainActivity$DummySectionFragment" >
 
-    <TextView
-        android:id="@+id/settingsTitleView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Serveur de données techniques"
-        android:textAppearance="?android:attr/textAppearanceLarge" />
+    <RadioGroup
+        android:id="@+id/radio_group"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_weight="1"
+        android:orientation="vertical" >
 
-    <EditText
-        android:id="@+id/serverUrl"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:ems="10"
-        android:inputType="textUri" >
+        <RadioButton
+        	android:id="@+id/radioButton1"
+        	android:layout_width="match_parent"
+        	android:layout_height="wrap_content"
+        	android:text="Récupérer des données depuis un serveur Cake" />
 
-        <requestFocus />
-    </EditText>
+	    <LinearLayout
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_marginTop="15dp" >
+	
+	        <TextView
+	            android:id="@+id/textView1"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:text="URL: "
+	            android:textAppearance="?android:attr/textAppearanceMedium" />
+	
+	        <EditText
+	            android:id="@+id/serverUrl"
+	            android:layout_width="match_parent"
+	            android:layout_height="wrap_content"
+	            android:layout_weight="1"
+	            android:ems="10"
+	            android:inputType="textUri" />
+	
+	    </LinearLayout>
+
+	    <RadioButton
+	        android:id="@+id/radioButton2"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_marginTop="20dp"
+	        android:text="Entrer manuellement les coordonnées GPS" />
+	
+	    <LinearLayout
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:layout_marginTop="15dp" >
+	
+	        <TextView
+	            android:id="@+id/textView3"
+	            android:layout_width="100dp"
+	            android:layout_height="wrap_content"
+	            android:text="Latitude: "
+	            android:textAppearance="?android:attr/textAppearanceMedium" />
+	
+	        <EditText
+	            android:id="@+id/latitude"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:layout_gravity="right"
+	            android:ems="10"
+	            android:inputType="numberDecimal|numberSigned" >
+	
+	            <requestFocus />
+	        </EditText>
+	
+    </LinearLayout>
+
+	    <LinearLayout
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content" >
+	
+	        <TextView
+	            android:id="@+id/textView2"
+	            android:layout_width="100dp"
+	            android:layout_height="wrap_content"
+	            android:text="Longitude: "
+	            android:textAppearance="?android:attr/textAppearanceMedium" />
+	
+	        <EditText
+	            android:id="@+id/longitude"
+	            android:layout_width="wrap_content"
+	            android:layout_height="wrap_content"
+	            android:layout_gravity="right"
+	            android:ems="10"
+	            android:inputType="numberDecimal|numberSigned" />
+		</LinearLayout>
+    </RadioGroup>
 
     <Button
         android:id="@+id/validateButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginEnd="25dp"
+        android:layout_marginStart="25dp"
         android:text="Valider" />
+    
 
 </LinearLayout>

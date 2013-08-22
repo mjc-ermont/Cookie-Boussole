@@ -87,7 +87,7 @@ public class BaloonPositionFromServer extends BaloonPositionProvider {
 			 */
 			try {
 				String request = mServer + (mServer.endsWith("/") ? "" : "/") + "bin/get.php?c=" + ID_GPS + "&t=0&n=1";
-				   
+				
 				HttpClient httpclient = new DefaultHttpClient();
 			    HttpResponse response;
 			
@@ -115,6 +115,8 @@ public class BaloonPositionFromServer extends BaloonPositionProvider {
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			} catch (JSONException e) {
+				e.printStackTrace();
+			} catch (IllegalArgumentException e) {
 				e.printStackTrace();
 			}
 		    

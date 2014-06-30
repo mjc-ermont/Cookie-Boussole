@@ -124,7 +124,7 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
         
         dataAdapter = new ArrayAdapter<String>(this,
                 R.layout.drawer_list_item, mDataString);
-        adapter.addSection("DonnÃ©es", dataAdapter);
+        adapter.addSection("Données", dataAdapter);
         
         mDrawerList.setAdapter(adapter);
         mDrawerList.setOnItemClickListener(new DrawerItemClickListener());

@@ -3,6 +3,7 @@ package fr.projetcookie.boussole;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.hardware.GeomagneticField;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -135,10 +136,17 @@ public class DataManager implements SensorEventListener, LocationListener{
 	}
 	
 	private void updateDirection() {	
+		float azimuth = direction;
+		Location currentLoc = mLastLocation;
+		GeomagneticField geoField = new GeomagneticField(
+				(float) currentLoc.getLatitude(),
+				(float) currentLoc.getLongitude(),
+				(float) currentLoc.getAltitude(),
+				System.currentTimeMillis());
+		azimuth += geoField.getDeclination();
+		float bearing = currentLoc.bearingTo(mProvider.getLocation());
 		
-		mLastLocation.setBearing(0);	
-		float bearing = mProvider.getLocation().bearingTo(mLastLocation);
 		
-		mListener.onDirectionUpdate(bearing + direction + 90); //TODO: Check if same offset everywhere
+		mListener.onDirectionUpdate(azimuth - bearing);
 	}
 }

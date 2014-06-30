@@ -256,7 +256,7 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
     
     private void buildAlertMessageNoGps() {
 	    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-	    builder.setMessage("Votre GPS n'est pas activÃ©. AmÃ©liorer la prÃ©cision en l'activant?")
+	    builder.setMessage("Votre GPS n'est pas activé. Améliorer la précision en l'activant?")
 	           .setCancelable(false)
 	           .setPositiveButton("Oui", new DialogInterface.OnClickListener() {
 	               public void onClick(@SuppressWarnings("unused") final DialogInterface dialog, @SuppressWarnings("unused") final int id) {
@@ -504,8 +504,8 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
 		else
 			mDistanceText  = mDataTitles[1] + " " + Math.round(distance) + " m";
 			
-		mLatitudeText  = mDataTitles[2] + " " + Math.round(lat*1000)/1000f + "Â°";
-		mLongitudeText = mDataTitles[3] + " " + Math.round(lon*1000)/1000f + "Â°";
+		mLatitudeText  = mDataTitles[2] + " " + Math.round(lat*1000)/1000f + "°";
+		mLongitudeText = mDataTitles[3] + " " + Math.round(lon*1000)/1000f + "°";
 
 		dataAdapter.clear();
 		dataAdapter.add(mAltitudeText);

@@ -1,14 +1,14 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android" >
 
-    <item
+    <item android:id="@+id/action_boussole" android:title="@string/action_boussole" android:showAsAction="always"></item><item android:id="@+id/action_map" android:title="@string/action_map" android:showAsAction="always"></item><item android:id="@+id/action_settings" android:showAsAction="always" android:title="@string/action_settings" >
+        </item><item
         android:id="@+id/action_enable_gps"
         android:showAsAction="always"
         android:icon="@drawable/ic_menu_mylocation"
         android:title="@string/action_enable_gps"/>
     
-   <item
-        android:id="@+id/action_settings"
-        android:showAsAction="always"
-        android:title="@string/action_settings"/> 
+   
+        
+         
 
 </menu>

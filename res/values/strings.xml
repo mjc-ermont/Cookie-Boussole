@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-    <string name="app_name">Cookie - Boussole</string>
+    <string name="app_name">Cookie</string>
     <string name="action_settings">Paramètres</string>
     <string name="action_enable_gps">Localisation</string>
     <string name="drawer_open">Open drawer</string>
@@ -16,6 +16,9 @@
         <item >Distance:</item>
         <item >Latitude:</item>
         <item >Longitude:</item>
+        <item >Précision: </item>
     </string-array>
+        <string name="action_map">Carte</string>
+        <string name="action_boussole">Boussole</string>
 
 </resources>

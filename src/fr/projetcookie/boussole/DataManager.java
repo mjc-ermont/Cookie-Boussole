@@ -37,6 +37,7 @@ public class DataManager implements SensorEventListener, LocationListener{
 	private double lat;
 	private String serverUri;
 	private double lon;
+	private GeomagneticField geoField;
 	
 	public DataManager(Context context, DirectionUpdateListener listener) {
 		mContext = context;
@@ -60,8 +61,8 @@ public class DataManager implements SensorEventListener, LocationListener{
 			Toast.makeText(mContext, "Getting data from settings", Toast.LENGTH_SHORT).show();
 		}
 		mProvider.start();
-		sensorManager.registerListener(this, gsensor, SensorManager.SENSOR_DELAY_GAME);
-		sensorManager.registerListener(this, msensor, SensorManager.SENSOR_DELAY_GAME);
+		sensorManager.registerListener(this, gsensor, SensorManager.SENSOR_DELAY_NORMAL);
+		sensorManager.registerListener(this, msensor, SensorManager.SENSOR_DELAY_NORMAL);
 	}
 
 	public void stop() {
@@ -132,21 +133,21 @@ public class DataManager implements SensorEventListener, LocationListener{
 	public void onLocationChanged(Location location) {
 		positionUpdated=true;
 		mLastLocation=location;
+
+		geoField = new GeomagneticField(
+				(float) mLastLocation.getLatitude(),
+				(float) mLastLocation.getLongitude(),
+				(float) mLastLocation.getAltitude(),
+				System.currentTimeMillis());
+		
 		updateDirection();
 	}
 	
-	private void updateDirection() {	
-		float azimuth = direction;
-		Location currentLoc = mLastLocation;
-		GeomagneticField geoField = new GeomagneticField(
-				(float) currentLoc.getLatitude(),
-				(float) currentLoc.getLongitude(),
-				(float) currentLoc.getAltitude(),
-				System.currentTimeMillis());
-		azimuth += geoField.getDeclination();
-		float bearing = currentLoc.bearingTo(mProvider.getLocation());
+	private void updateDirection() {			
+		direction += geoField.getDeclination();
+		float bearing = mLastLocation.bearingTo(mProvider.getLocation());
 		
 		
-		mListener.onDirectionUpdate(azimuth - bearing);
+		mListener.onDirectionUpdate(direction - bearing);
 	}
 }

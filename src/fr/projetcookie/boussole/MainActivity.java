@@ -86,6 +86,7 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
 	private String mDistanceText;
 	private String mLatitudeText;
 	private String mLongitudeText;
+	private String mPrecisionText;
 	
 	private ArrayAdapter<String> dataAdapter;
 	private ArrayList<String> mDataString = new ArrayList<String>();
@@ -116,11 +117,13 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
 		mDistanceText  = mDataTitles[1] + " N/A";
 		mLatitudeText  = mDataTitles[2] + " N/A";
 		mLongitudeText = mDataTitles[3] + " N/A";
+		mPrecisionText = mDataTitles[4] + " N/A";
 
 		mDataString.add(mAltitudeText);
 		mDataString.add(mDistanceText);
 		mDataString.add(mLatitudeText);
 		mDataString.add(mLongitudeText);
+		mDataString.add(mPrecisionText);
         
         dataAdapter = new ArrayAdapter<String>(this,
                 R.layout.drawer_list_item, mDataString);
@@ -214,12 +217,17 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
         case R.id.action_enable_gps:
         	 startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
              return true;
+        case R.id.action_boussole:
+        	selectItem(1);
+        	return true;
+        case R.id.action_map:
+        	selectItem(2);
+        	return true;
         default:
             return super.onOptionsItemSelected(item);
         }
     }
 
-    /* The click listner for ListView in the navigation drawer */
     private class DrawerItemClickListener implements ListView.OnItemClickListener {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -493,6 +501,7 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
 		double distance = baloonLoc.distanceTo(mDataManager.mLastLocation); // 7
 		double lat = baloonLoc.getLatitude(); // 8
 		double lon = baloonLoc.getLongitude(); // 9
+		double prec = baloonLoc.getAccuracy();
 		
 		if(h > 800)
 			mAltitudeText  = mDataTitles[0] + " " + Math.round(h/10)/100f + " km";
@@ -506,12 +515,21 @@ GooglePlayServicesClient.OnConnectionFailedListener, DirectionUpdateListener   {
 			
 		mLatitudeText  = mDataTitles[2] + " " + Math.round(lat*1000)/1000f + "°";
 		mLongitudeText = mDataTitles[3] + " " + Math.round(lon*1000)/1000f + "°";
+		
+		if(prec > 800) 
+			mPrecisionText = mDataTitles[4] + " " + Math.round(prec/10)/100f + " km";
+		else
+			mPrecisionText = mDataTitles[4] + " " + Math.round(prec) + " m";
+			
 
 		dataAdapter.clear();
 		dataAdapter.add(mAltitudeText);
 		dataAdapter.add(mDistanceText);
 		dataAdapter.add(mLatitudeText);
 		dataAdapter.add(mLongitudeText);
+		
+		if(prec != 0)
+			dataAdapter.add(mPrecisionText);
 		
 		dataAdapter.notifyDataSetChanged();
 		adapter.notifyDataSetChanged();
